@@ -1,7 +1,17 @@
 """
-MUDU-VLLM — Senaryo 3: Video Tabanlı Karar Destek Sistemi
-Qwen2-VL-2B ile Türkçe analiz + YOLO/ByteTrack anomali olaylarını yorumlama.
+MUDU-VLLM — Senaryo 3: Video Tabanli Karar Destek Sistemi (MINI / 2B)
+====================================================================
+Qwen2-VL-2B (transformers, CPU) ile Turkce analiz.
+
+** Bu MINI surumdur: hizli CPU testi / dusuk donanimli makineler icindir. **
+** Juriye gosterilecek ASIL cikti 7B surumunden alinir (qwen2.5vl, Ollama). **
+
+YOLO ipuclari opsiyoneldir: analyze(path, yolo_events=detector.anomalies)
 Lisans: Apache License 2.0
+
+Kurulum:
+    python3 -m venv venv && source venv/bin/activate
+    pip install torch transformers opencv-python pillow
 """
 import os
 import re
@@ -11,11 +21,11 @@ import torch
 from PIL import Image
 from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 
-# Hızlı CPU testleri / canlı demo için 2B. Daha doğru sonuç için:
-#   - Qwen/Qwen2.5-VL-3B-Instruct (daha güçlü, sınıf adı Qwen2_5_VLForConditionalGeneration)
-#   - ya da jüriye gösterilecek çıktı için Ollama'daki qwen2.5vl:7b pipeline'ı
 MODEL_NAME = "Qwen/Qwen2-VL-2B-Instruct"
-print("Hafifletilmiş model ve işlemci yükleniyor (lokal CPU modu)...")
+MAX_FRAMES = 8           # 2B icin makul; cok kare CPU'da yavaslatir
+MAX_NEW_TOKENS = 512
+
+print("Hafifletilmis model ve islemci yukleniyor (lokal CPU modu)...")
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_NAME,
     torch_dtype=torch.float32,
@@ -24,16 +34,16 @@ model = Qwen2VLForConditionalGeneration.from_pretrained(
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 
 
-def sample_frames_with_time(video_path, max_frames=10):
-    """Videoyu eşit aralıklarla örnekler; (PIL_kareler, ['MM:SS', ...]) döner."""
+def sample_frames_with_time(video_path, max_frames=MAX_FRAMES):
+    """Videoyu esit araliklarla ornekler; (PIL_kareler, ['MM:SS', ...]) doner."""
     if not os.path.exists(video_path):
-        raise FileNotFoundError(f"Video bulunamadı: {video_path}")
+        raise FileNotFoundError(f"Video bulunamadi: {video_path}")
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if total <= 0:
         cap.release()
-        raise ValueError("Video okunamadı ya da boş.")
+        raise ValueError("Video okunamadi ya da bos.")
     step = max(total // max_frames, 1)
     frames, stamps = [], []
     for idx in range(0, total, step):
@@ -51,9 +61,24 @@ def sample_frames_with_time(video_path, max_frames=10):
     return frames, stamps
 
 
-def build_prompt(stamps, yolo_events=None):
-    """Kopyalamayı önleyen, kategorili, boş-olay destekli JSON talimatı."""
-    frame_lines = "\n".join(f"- Kare {i+1} ≈ {t}" for i, t in enumerate(stamps))
+def build_prompt(stamps, yolo_events=None, seen_classes=None):
+    """7B ile ayni yapida: kategoriler + YOLO ipucu + summary/actions zorunlu."""
+    frame_lines = "\n".join(f"- Kare {i+1} ~= {t}" for i, t in enumerate(stamps))
+
+    # YOLO sinif ipucu (7B'deki gibi): hangi anda hangi nesneler gorundu
+    TR = {"person": "kisi", "dog": "kopek", "cat": "kedi", "car": "araba",
+          "truck": "kamyon", "motorcycle": "motosiklet", "bus": "otobus",
+          "bicycle": "bisiklet", "horse": "at", "knife": "bicak"}
+    cls_block = ""
+    if seen_classes:
+        lines = []
+        for t in sorted(seen_classes.keys()):
+            names = ", ".join(sorted(TR.get(c, c) for c in seen_classes[t]))
+            if names:
+                lines.append(f"- {t}: {names}")
+        if lines:
+            cls_block = ("\nNesne dedektoru (YOLO) su nesneleri tespit etti "
+                         "(siniflari dogru kullan, tahmin etme):\n" + "\n".join(lines) + "\n")
 
     yolo_block = ""
     if yolo_events:
@@ -62,57 +87,59 @@ def build_prompt(stamps, yolo_events=None):
             for e in yolo_events
         )
         yolo_block = (
-            "\nNesne takip katmanı (YOLO+ByteTrack) şu ipuçlarını verdi; "
-            "doğrula ve yalnızca tutarlı olanları rapora ekle:\n" + ev + "\n"
+            "\nAlgilayici ipuclari (dogrula, tutarli olanlari ekle):\n" + ev + "\n"
         )
 
-    kategoriler = """Şu kategorilere dikkat et ve YALNIZCA gerçekten gördüğünü işaretle:
-- İNSAN TEHDİDİ: kavga/arbede, fiziksel saldırı veya darp, hırsızlık, silahla yaralanma,
-  gizlenen/saklanan şüpheli kişi, yerde hareketsiz kişi, düşme
-- SİLAH: tüfek, tabanca, bıçak, roketatar/füze, patlayıcı
-- ARAÇ / İŞ KAZASI: araç veya forklift devrilmesi, araç-yaya çarpma riski
-- HAYVAN TEHDİDİ: yılan, akrep, yaban domuzu, kurt/ayı gibi vahşi hayvan, saldırgan köpek
-- ÇEVRE: yangın, yoğun duman"""
+    kategoriler = """Su kategorilere dikkat et ve YALNIZCA gercekten gordugunu isaretle:
+- INSAN TEHDIDI: kavga/arbede, fiziksel saldiri veya darp, hirsizlik, silahla yaralanma,
+  gizlenen/saklanan supheli kisi, yerde hareketsiz kisi, dusme
+- SILAH: tufek, tabanca, bicak, roketatar/fuze, patlayici
+- ARAC / IS KAZASI: arac veya forklift devrilmesi, arac-yaya carpma riski
+- HAYVAN TEHDIDI: yilan, akrep, yaban domuzu, kurt/ayi gibi vahsi hayvan, saldirgan kopek
+- CEVRE: yangin, yogun duman"""
 
     ornek = """{
-  "summary": "Depo alanında forklift devrildi, yakınında yerde hareketsiz bir personel var; yüksek yaralanma riski.",
+  "summary": "Depo alaninda forklift devrildi, yakininda yerde hareketsiz bir personel var; yuksek yaralanma riski.",
   "events": [
     {"time": "00:15", "event": "Forklift devrildi"},
     {"time": "00:20", "event": "Yerde hareketsiz yatan personel"}
   ],
-  "risk": "Yüksek",
-  "actions": ["Sağlık ekibini yönlendir", "Forklift çevresini güvenlik şeridine al"]
+  "risk": "Yuksek",
+  "actions": ["Saglik ekibini yonlendir", "Forklift cevresini guvenlik seridine al"]
 }"""
 
-    return f"""Sen bir güvenlik operasyon merkezi video analiz asistanısın. Sana güvenlik
-kamerasından alınmış, zaman damgalı kareler veriliyor. Görevin SADECE bu karelerde
-GERÇEKTEN gördüğün olayları raporlamak.
+    return f"""Sen bir guvenlik operasyon merkezi video analiz asistanisin. Sana guvenlik
+kamerasindan alinmis, zaman damgali kareler veriliyor. Gorevin SADECE bu karelerde
+GERCEKTEN gordugun olaylari raporlamak.
 
-Karelerin yaklaşık zaman damgaları:
+Karelerin yaklasik zaman damgalari:
 {frame_lines}
-{yolo_block}
+{cls_block}{yolo_block}
 {kategoriler}
 
-KESİN KURALLAR:
-1. Yalnızca karelerde net gördüğün şeyleri yaz. Emin değilsen YAZMA.
-2. Her olay için SOMUT açıklama yaz (ör. "İki kişi birbirine vuruyor"). Tek kelimelik
-   genel etiket ("Yaralanma") YETERSİZ.
-3. Her kareye bir olay UYDURMA. Sadece gerçek ve birbirinden farklı olayları yaz.
-4. Hiçbir anomali görmüyorsan: "events" listesini BOŞ bırak ve "risk": "Düşük" yaz.
-5. Aşağıdaki örnek metni ASLA olduğu gibi kopyalama; kendi gözlemlerinle doldur.
+KESIN KURALLAR:
+1. Yalnizca karelerde net gordugun seyleri yaz. Emin degilsen YAZMA.
+2. Nesne dedektoru bir sinif bildirdiyse (or. kopek), onu kadin/insan diye DEGISTIRME.
+3. Her olay icin SOMUT aciklama yaz (or. "Iki kisi birbirine vuruyor"). Tek kelimelik
+   genel etiket ("Yaralanma") YETERSIZ.
+4. Her kareye bir olay UYDURMA. Sadece gercek ve birbirinden farkli olaylari yaz.
+5. "summary" ASLA bos kalmasin: en az bir cumle Turkce ozet yaz.
+6. "actions" ASLA bos kalmasin: en az bir somut operator onerisi yaz.
+7. Anomali yoksa "events" bos olabilir ama "risk" yine "Dusuk" yaz.
+8. Asagidaki ornek metni ASLA oldugu gibi kopyalama; kendi gozlemlerinle doldur.
 
-Çıktı SADECE şu JSON formatında olsun, başka hiçbir metin yazma. Alanlar:
-- summary: videonun kısa, somut Türkçe özeti
-- events:  [{{"time": "MM:SS", "event": "gözlemlenen olay"}}]  (yoksa boş liste)
-- risk:    "Düşük" | "Orta" | "Yüksek"
-- actions: operatöre somut, uygulanabilir öneriler
+Cikti SADECE su JSON formatinda olsun, baska hicbir metin yazma. Alanlar:
+- summary: videonun kisa, somut Turkce ozeti (dolu)
+- events:  [{{"time": "MM:SS", "event": "gozlemlenen olay"}}]  (yoksa bos liste)
+- risk:    "Dusuk" | "Orta" | "Yuksek"
+- actions: operatore somut, uygulanabilir oneriler (dolu)
 
-Sadece FORMAT örneği (içeriği kopyalama, başka senaryoya aittir):
+Sadece FORMAT ornegi (icerigi kopyalama, baska senaryoya aittir):
 {ornek}"""
 
 
 def parse_json(raw):
-    """Model çıktısından ilk geçerli JSON bloğunu güvenle ayıkla."""
+    """Model ciktisindan ilk gecerli JSON blogunu guvenle ayikla."""
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m:
         return None
@@ -122,9 +149,9 @@ def parse_json(raw):
         return None
 
 
-def analyze(video_path, max_frames=10, yolo_events=None):
+def analyze(video_path, max_frames=MAX_FRAMES, yolo_events=None, seen_classes=None):
     frames, stamps = sample_frames_with_time(video_path, max_frames)
-    prompt = build_prompt(stamps, yolo_events)
+    prompt = build_prompt(stamps, yolo_events, seen_classes)
     messages = [{
         "role": "user",
         "content": [
@@ -138,9 +165,9 @@ def analyze(video_path, max_frames=10, yolo_events=None):
     inputs = processor(
         text=[text], images=frames, padding=True, return_tensors="pt"
     ).to("cpu")
-    print("Mini model ile analiz üretiliyor...")
+    print("Mini (2B) model ile analiz uretiliyor...")
     with torch.no_grad():
-        gen = model.generate(**inputs, max_new_tokens=512)
+        gen = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS)
     trimmed = [o[len(i):] for i, o in zip(inputs.input_ids, gen)]
     raw = processor.batch_decode(
         trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
@@ -153,12 +180,11 @@ if __name__ == "__main__":
         "/mnt/c/Users/saphi/Downloads/Abuse010_x264.mp4",
         "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
     ]
-    # Berke'nin AnomalyDetector.anomalies listesini şöyle geçireceksin:
-    # result, raw = analyze(path, yolo_events=detector.anomalies)
+    # YOLO ipucu ile: result, raw = analyze(path, yolo_events=det.anomalies, seen_classes=seen)
     for path in videos:
-        print(f"\n=== İşleniyor (Mini v1.3): {path} ===")
+        print(f"\n=== Isleniyor (Mini 2B): {path} ===")
         try:
-            result, raw = analyze(path, max_frames=10)
+            result, raw = analyze(path, max_frames=MAX_FRAMES)
             print(json.dumps(result, ensure_ascii=False, indent=2)
                   if result else raw)
         except Exception as exc:
