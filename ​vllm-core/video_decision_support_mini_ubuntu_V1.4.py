@@ -236,7 +236,6 @@ def analyze(video_path, max_frames=MAX_FRAMES, yolo_events=None, seen_classes=No
 
 if __name__ == "__main__":
     videos = [
-        "/mnt/c/Users/saphi/Downloads/Abuse010_x264.mp4",
         "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
     ]
     for path in videos:
