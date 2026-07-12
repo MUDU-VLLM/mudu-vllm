@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api-service/Dockerfile
+    image: mudu-vllm:1.4
+    container_name: mudu-vllm-api
+    command: ["uvicorn", "api_app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+    restart: unless-stopped
+
+  web:
+    image: mudu-vllm:1.4
+    container_name: mudu-vllm-web
+    depends_on:
+      - api
+    command: ["uvicorn", "web_app:app", "--host", "0.0.0.0", "--port", "7860"]
+    ports:
+      - "7860:7860"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=7860
+    restart: unless-stopped

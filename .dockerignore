@@ -1,0 +1,15 @@
+.git
+.gitignore
+venv/
+.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+agent-transcripts/
+.cursor/
+ozet.md
+CALISTIRMA.md
+LICENSE
+README.md
+*.md
+!api-service/requirements.docker.txt
