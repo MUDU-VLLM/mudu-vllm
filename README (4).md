@@ -26,6 +26,7 @@ yapılandırılmış **Türkçe JSON** karar çıktısı üreten multimodal kara
 - [Algı ve Füzyon Detayları](#algı-ve-füzyon-detayları)
 - [Veri Seti](#veri-seti)
 - [Dokümanlar](#dokümanlar)
+- [Ekip ve görev dağılımı](#ekip-ve-görev-dağılımı)
 
 ---
 
@@ -213,10 +214,11 @@ kodlanır, olasılıksal ölçüm sonrası ağırlıklı skor (`0.35 · 0.35 · 
 
 ## Veri Seti
 
-Test videoları açık kaynaktan alınmıştır. Videolar depoya dahil edilmez.
+Sistemin test edilmesi ve doğrulanması için açık kaynaklı akademik ve operasyonel video veri setleri kullanılmıştır. Güvenlik senaryoları nedeniyle ham videolar depoda tutulmamakta, herkese açık kaynaklardan çekilmektedir.
 
-- **Kaynak:** [dataset adı ve linki eklenecek — örn. UCF-Crime / Hugging Face]
-- **Lisans:** [dataset lisansı eklenecek]
+* *Ana Test Veri Seti:* UCF-Crime (Anomaly Detection in Video)
+* *Açık Erişim Bağlantısı:* [Kaggle UCF-Crime Dataset](https://www.kaggle.com/datasets/odins0n/ucf-crime)
+* *Lisans:* Akademik / Araştırma Amaçlı Açık Lisans
 
 ---
 
@@ -229,6 +231,16 @@ Test videoları açık kaynaktan alınmıştır. Videolar depoya dahil edilmez.
 | [vllm-core/README.md](vllm-core/README.md) | vllm-core betikleri kullanma kılavuzu |
 
 ---
+
+## Ekip ve Görev Dağılımı
+**Takım Adı:** MUDU-VLLM
+ 
+| Üye Adı Soyadı | Projedeki Rolü / Görev Tanımı |
+| :--- | :--- |
+| **Elif Kübra Sağlam** | **Takım Kaptanı** · Veri Bilimi ve Entegrasyon. Projenin analitik mimarisini ve ReAct Agent döngüsünü yönetiyor. |
+| **Abdulhamit Hazine** | **Sistem Mimarisi & Gömülü Sistemler** · FastAPI ve Docker altyapısı ile modelin yerel servis katmanını (vLLM) kuruyor. |
+| **Berke Baran Tozkoparan** | **Bilgisayarlı Görü (CV)** · YOLO / RT-DETR modelleri ile nesne tespiti, takip ve füzyon süreçlerinden sorumlu. |
+| **Mehmet Emre Macırmemet** | **Arayüz Geliştirici (UI)** · Web UI (tek sayfa kullanıcı arayüzü), zaman çizelgesi (timeline) ve arayüz prototiplerinden sorumlu. |
 
 <div align="center">
 
