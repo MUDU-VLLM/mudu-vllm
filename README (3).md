@@ -13,7 +13,7 @@ Aşağıdaki tablo, her bileşenin mevcut olgunluk seviyesini gösterir. Şeffaf
 | Bileşen | Durum |
 |---------|-------|
 | Ubuntu / Linux — 7B (tam pipeline) | ✅ Test edildi, çalışıyor (GPU üzerinde doğrulandı) |
-| Ubuntu / Linux — 2B (mini) | ⚙️ Kurulum hazır, kısmi test |
+| Ubuntu / Linux — 2B (mini) | ✅ Test edildi, çalışıyor |
 | Windows — 7B / 2B | ⚙️ Kurulum hazır, uçtan uca test sürüyor |
 | macOS (Apple Silicon) — 7B / 2B | ⚙️ Kurulum hazır, test aşamasında |
 | FastAPI servis katmanı | ✅ Çalışıyor — `/v1/analyze` · `/health` · `/docs` |
