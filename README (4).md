@@ -217,7 +217,7 @@ kodlanır, olasılıksal ölçüm sonrası ağırlıklı skor (`0.35 · 0.35 · 
 Sistemin test edilmesi ve doğrulanması için açık kaynaklı akademik ve operasyonel video veri setleri kullanılmıştır. Güvenlik senaryoları nedeniyle ham videolar depoda tutulmamakta, herkese açık kaynaklardan çekilmektedir.
 
 * *Ana Test Veri Seti:* UCF-Crime (Anomaly Detection in Video)
-* *Açık Erişim Bağlantısı:* [Kaggle UCF-Crime Dataset](https://www.kaggle.com/datasets/odins0n/ucf-crime)
+* *Açık Erişim Bağlantısı:* [Kaggle UCF-Crime Dataset]([https://www.kaggle.com/datasets/odins0n/ucf-crime])https://www.kaggle.com/datasets/odins0n/ucf-crime-dataset
 * *Lisans:* Akademik / Araştırma Amaçlı Açık Lisans
 
 ---
