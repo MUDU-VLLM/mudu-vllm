@@ -1,0 +1,8 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+nvidia-ml-py>=12.0.0
+# torch/torchvision CPU Dockerfile'da ayrıca kurulur
+# ultralytics --no-deps ile kurulur (CUDA torch'u zorla indirmesin)
