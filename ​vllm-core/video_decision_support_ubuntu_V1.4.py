@@ -23,7 +23,6 @@ CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_V1.4.py
 """
 
 import os
-import sys
 import re
 import json
 import base64
@@ -445,24 +444,19 @@ def analyze(video_path):
 
 
 if __name__ == "__main__":
-    # Video yolu: 1) komut satiri argumani  2) asagidaki liste  3) ayni klasordeki ornek.mp4
+    import sys
     if len(sys.argv) > 1:
-        videos = [sys.argv[1]]
+        video_path = sys.argv[1]
     else:
-        videos = [
-            "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
-        ]
-        if not videos or not os.path.exists(videos[0]):
-            fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
-            print(f"Not: video yolu verilmedi, varsayilan deneniyor: {fallback}")
-            videos = [fallback]
-    for path in videos:
-        print(f"\n=== Isleniyor (TAM): {path} ===")
-        try:
-            result, raw = analyze(path)
-            print("\n--- Sartnameye uygun JSON ---")
-            print(json.dumps(result, ensure_ascii=False, indent=2) if result else raw)
-        except requests.exceptions.ConnectionError:
-            print("HATA: Ollama'ya baglanilamadi. (curl http://localhost:11434)")
-        except Exception as exc:
-            print(f"HATA: {exc}")
+        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
+        print(f"Not: video yolu verilmedi, varsayilan deneniyor: {video_path}")
+
+    print(f"\n=== Isleniyor (TAM 7B): {video_path} ===")
+    try:
+        result, raw = analyze(video_path)
+        print("\n--- Sartnameye uygun JSON ---")
+        print(json.dumps(result, ensure_ascii=False, indent=2) if result else raw)
+    except requests.exceptions.ConnectionError:
+        print("HATA: Ollama'ya baglanilamadi. (curl http://localhost:11434)")
+    except Exception as exc:
+        print(f"HATA: {exc}")
