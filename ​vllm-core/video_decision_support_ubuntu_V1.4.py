@@ -23,6 +23,7 @@ CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_V1.4.py
 """
 
 import os
+import sys
 import re
 import json
 import base64
@@ -444,9 +445,17 @@ def analyze(video_path):
 
 
 if __name__ == "__main__":
-    videos = [
-        "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
-    ]
+    # Video yolu: 1) komut satiri argumani  2) asagidaki liste  3) ayni klasordeki ornek.mp4
+    if len(sys.argv) > 1:
+        videos = [sys.argv[1]]
+    else:
+        videos = [
+            "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
+        ]
+        if not videos or not os.path.exists(videos[0]):
+            fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
+            print(f"Not: video yolu verilmedi, varsayilan deneniyor: {fallback}")
+            videos = [fallback]
     for path in videos:
         print(f"\n=== Isleniyor (TAM): {path} ===")
         try:
