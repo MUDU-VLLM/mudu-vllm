@@ -1,4 +1,4 @@
-<div align="center">
+<img width="506" height="101" alt="image" src="https://github.com/user-attachments/assets/7cc18ec5-51e7-4dfb-b5a3-921327751498" /><div align="center">
 
 # MUDU-VLLM
 
@@ -127,6 +127,22 @@ docker compose up -d              # api:8000 + web:7860
 > Video yolu verilmezse betikler kendi klasöründeki `ornek.mp4` dosyasını arar.
 
 ---
+
+## 5. Veri Seti
+
+Sistem testlerinde UCF-Crime veri setinden seçilen gözetim kamerası videoları kullanılmıştır.
+
+- **Kaynak:** UCF-Crime (Real-world Anomaly Detection in Surveillance Videos)
+- **İndirme bağlantısı:** https://www.crcv.ucf.edu/projects/real-world/
+- **Kullanım koşulu:** Akademik araştırma amaçlıdır. Veri seti sahipleri, kullanım
+  halinde aşağıdaki çalışmaya atıf yapılmasını talep etmektedir:
+
+  > Waqas Sultani, Chen Chen, Mubarak Shah, "Real-world Anomaly Detection in
+  > Surveillance Videos", IEEE Conference on Computer Vision and Pattern
+  > Recognition (CVPR), 2018.
+
+- **Kullanılan örnekler:** Arrest001_x264.mp4 (kavga/müdahale senaryosu)
+- **Not:** Video dosyaları depoya dahil edilmemiştir; yukarıdaki bağlantıdan indirilebilir.
 
 ## Dizin Yapısı
 
