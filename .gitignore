@@ -220,3 +220,19 @@ __marimo__/
 # Build/analiz loglari
 *.log
 docker-build.log
+
+# Model agirliklari (buyuk dosyalar)
+*.pt
+*.onnx
+
+# Video dosyalari (depoya dahil edilmez, README'de link verilir)
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Proje ozel sanal ortamlar
+vllm-env/
+
+# macOS
+.DS_Store
