@@ -1,5 +1,5 @@
 """
-MUDU-VLLM — Senaryo 3: Uctan uca video karar destek pipeline'i (7B) V1.4
+MUDU-VLLM — Senaryo 3: Uctan uca video karar destek pipeline'i (7B) V1.5
 
 Katmanlar:
     [HAREKET]  YOLO + ByteTrack -> nesne takibi + sinif etiketleri + hareket anomalileri
