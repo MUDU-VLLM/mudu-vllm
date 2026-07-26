@@ -1,1 +1,144 @@
-Mehmet Emre deneme
+"""
+MUDU-VLLM — Ses Analizi Modulu (Whisper)
+=========================================
+Videodan sesi cikarir, Turkce transkribe eder ve guvenlik acisindan kritik
+sozel ifadeleri (imdat, silah, yangin vb.) zaman damgasiyla dondurur.
+
+Ozellikler:
+- GPU otomatik: CUDA varsa float16 (hizli), yoksa CPU int8 (uyumlu).
+- Zarif dusme: faster-whisper veya ffmpeg yoksa sistemi durdurmaz, bos liste doner.
+- Genisletilmis anahtar kelime sozlugu (tehdit / yardim / kaza kategorileri).
+
+Kullanim (kod icinde):
+    from audio_cues import transcribe_audio_cues
+    cues = transcribe_audio_cues("video.mp4")   # [{"time":"MM:SS","event":"..."}]
+
+Kullanim (komut satiri):
+    python3 audio_cues.py /yol/video.mp4
+
+Kurulum:
+    pip install faster-whisper
+    sudo apt-get install -y ffmpeg          # sesi cikarmak icin
+
+Lisans: Apache License 2.0
+"""
+
+import os
+import sys
+import json
+import tempfile
+import subprocess
+
+try:
+    import torch
+    _HAS_TORCH = True
+except ImportError:
+    _HAS_TORCH = False
+
+
+# Guvenlik acisindan kritik Turkce ifadeler (kategorilere ayrildi).
+AUDIO_KEYWORDS = [
+    # Yardim cagrisi
+    "imdat", "imdad", "yardim", "help", "yetisin", "kurtar", "kurtarin",
+    # Silah / saldiri
+    "silah", "tabanca", "tufek", "bicak", "ates", "vuruldu", "saldiri",
+    "bomba", "patlama", "patladi",
+    # Uyari / panik
+    "kacin", "kacti", "dikkat", "dur", "birak", "birakin", "tehlike", "tehdit",
+    # Yangin / cevre
+    "yangin", "duman", "boguluyor",
+    # Kaza / saglik
+    "yaralandi", "yarali", "dustu", "kan", "hastane", "ambulans", "cagirin",
+    # Guvenlik / mudahale
+    "polis", "hirsiz", "alarm", "koruyun", "tutun",
+]
+
+
+def _pick_whisper_device():
+    """CUDA varsa (float16), yoksa CPU (int8) doner."""
+    if _HAS_TORCH and torch.cuda.is_available():
+        return "cuda", "float16"
+    return "cpu", "int8"
+
+
+def transcribe_audio_cues(video_path, model_size="small", keywords=None):
+    """
+    Videodaki sesten guvenlik acisindan kritik ifadeleri ayiklar.
+
+    Args:
+        video_path: analiz edilecek video dosyasi
+        model_size: faster-whisper model boyutu ("tiny"|"base"|"small"|"medium")
+        keywords:   ozel anahtar kelime listesi (None ise AUDIO_KEYWORDS)
+
+    Returns:
+        [{"time": "MM:SS", "event": "..."}]  — hicbir sey bulunmazsa/atlanirsa []
+    """
+    kw = keywords if keywords is not None else AUDIO_KEYWORDS
+
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        print("UYARI: faster-whisper yok -> ses atlandi. (pip install faster-whisper)")
+        return []
+
+    if not os.path.exists(video_path):
+        print(f"UYARI: video bulunamadi -> ses atlandi: {video_path}")
+        return []
+
+    # Sesi gecici bir WAV dosyasina cikar (16 kHz mono, Whisper icin ideal).
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    wav = tmp.name
+    tmp.close()
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-ac", "1", "-ar", "16000",
+             wav, "-loglevel", "error"],
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("UYARI: ffmpeg yok/hatali -> ses atlandi. (sudo apt install ffmpeg)")
+        _safe_remove(wav)
+        return []
+
+    if not os.path.exists(wav) or os.path.getsize(wav) == 0:
+        _safe_remove(wav)
+        return []
+
+    device, compute_type = _pick_whisper_device()
+    print(f"[SES] Whisper yukleniyor: {model_size} ({device.upper()}, {compute_type})")
+    model = WhisperModel(model_size, device=device, compute_type=compute_type)
+
+    cues = []
+    try:
+        segments, _ = model.transcribe(wav, language="tr")
+        for seg in segments:
+            text = seg.text.strip()
+            hit = next((k for k in kw if k in text.lower()), None)
+            if hit:
+                ts = f"{int(seg.start // 60):02d}:{int(seg.start % 60):02d}"
+                cues.append({"time": ts,
+                             "event": f'Sesli tehdit/yardim ifadesi: "{text}"'})
+                print(f"  [SES] {ts} | '{hit}' -> {text}")
+    finally:
+        _safe_remove(wav)
+
+    return cues
+
+
+def _safe_remove(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    else:
+        print("Kullanim: python3 audio_cues.py /yol/video.mp4")
+        sys.exit(1)
+
+    print(f"\n=== Ses analizi: {path} ===")
+    result = transcribe_audio_cues(path)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
