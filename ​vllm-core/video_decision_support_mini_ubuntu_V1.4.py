@@ -1,9 +1,9 @@
 """
 MUDU-VLLM — Senaryo 3: Video Tabanli Karar Destek Sistemi (MINI / 2B)
 
-Qwen2-VL-2B (transformers, CPU) ile Turkce analiz.
+Qwen2-VL-2B (transformers) ile Turkce analiz. GPU varsa otomatik CUDA kullanir.
 
-** Bu MINI surumdur: hizli CPU testi / dusuk donanimli makineler icindir. **
+** Bu MINI surumdur: hizli test / dusuk donanimli makineler icindir. **
 ** Juriye gosterilecek ASIL cikti 7B surumunden alinir (qwen2.5vl, Ollama). **
 
 YOLO ipuclari opsiyoneldir: analyze(path, yolo_events=detector.anomalies)
@@ -12,6 +12,9 @@ Lisans: Apache License 2.0
 Kurulum:
     python3 -m venv venv && source venv/bin/activate
     pip install torch transformers opencv-python pillow numpy
+
+Calistirma:
+    python3 video_decision_support_mini_ubuntu_V1.5.py /yol/video.mp4
 """
 import os
 import re
@@ -26,12 +29,22 @@ MODEL_NAME = "Qwen/Qwen2-VL-2B-Instruct"
 MAX_FRAMES = 8
 MAX_NEW_TOKENS = 512
 
-print("Hafifletilmis model ve islemci yukleniyor (lokal CPU modu)...")
+
+def pick_device():
+    """NVIDIA GPU varsa CUDA (float16), yoksa CPU (float32)."""
+    if torch.cuda.is_available():
+        return "cuda", torch.float16
+    return "cpu", torch.float32
+
+
+DEVICE, DTYPE = pick_device()
+print(f"Cihaz secildi: {DEVICE.upper()}  (dtype={DTYPE})")
+
+print("Hafifletilmis model ve islemci yukleniyor...")
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_NAME,
-    torch_dtype=torch.float32,
-    device_map="cpu",
-)
+    torch_dtype=DTYPE,
+).to(DEVICE)
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 
 
@@ -218,8 +231,8 @@ def analyze(video_path, max_frames=MAX_FRAMES, yolo_events=None, seen_classes=No
     )
     inputs = processor(
         text=[text], images=frames, padding=True, return_tensors="pt"
-    ).to("cpu")
-    print("Mini (2B) model ile analiz uretiliyor...")
+    ).to(DEVICE)
+    print(f"Mini (2B) model ile analiz uretiliyor ({DEVICE.upper()})...")
     with torch.no_grad():
         gen = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS)
     trimmed = [o[len(i):] for i, o in zip(inputs.input_ids, gen)]
@@ -235,14 +248,18 @@ def analyze(video_path, max_frames=MAX_FRAMES, yolo_events=None, seen_classes=No
 
 
 if __name__ == "__main__":
-    videos = [
-        "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
-    ]
-    for path in videos:
-        print(f"\n=== Isleniyor (Mini 2B): {path} ===")
-        try:
-            result, raw = analyze(path, max_frames=MAX_FRAMES)
-            print(json.dumps(result, ensure_ascii=False, indent=2)
-                  if result else raw)
-        except Exception as exc:
-            print(f"HATA: {exc}")
+    import sys
+    # Video yolu: 1) komut satiri argumani  2) ayni klasordeki ornek.mp4
+    if len(sys.argv) > 1:
+        video_path = sys.argv[1]
+    else:
+        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
+        print(f"Not: video yolu verilmedi, varsayilan deneniyor: {video_path}")
+
+    print(f"\n=== Isleniyor (Mini 2B): {video_path} ===")
+    try:
+        result, raw = analyze(video_path, max_frames=MAX_FRAMES)
+        print(json.dumps(result, ensure_ascii=False, indent=2)
+              if result else raw)
+    except Exception as exc:
+        print(f"HATA: {exc}")
