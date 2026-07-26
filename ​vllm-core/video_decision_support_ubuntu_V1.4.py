@@ -19,13 +19,7 @@ Lisans: Apache License 2.0
     4) python3 -m venv venv && source venv/bin/activate
        pip install ultralytics opencv-python requests numpy faster-whisper
 
-CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_ubuntu_V1.4.py /yol/video.mp4
-
-vLLM ile:
-    vllm serve Qwen/Qwen2.5-VL-7B-Instruct --host 0.0.0.0 --port 8000 \
-      --dtype bfloat16 --max-model-len 16384 --limit-mm-per-prompt image=8
-    MUDU_BASE_URL=http://localhost:8000/v1 MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct \
-      python3 video_decision_support_ubuntu_V1.4.py /yol/video.mp4
+CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_ubuntu_V1.5.py
 """
 
 import os
@@ -49,8 +43,8 @@ except ImportError:
 
 # YAPILANDIRMA
 # Servis adresi ve model, ortam degiskeninden okunur; verilmezse Ollama varsayilir.
-#   Ollama (varsayilan):  MUDU_BASE_URL=http://localhost:11434/v1  MUDU_MODEL=qwen2.5vl-16k
-#   vLLM:                 MUDU_BASE_URL=http://localhost:8000/v1   MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct
+#   Ollama (varsayilan):  BASE_URL=http://localhost:11434/v1  MODEL=qwen2.5vl-16k
+#   vLLM:  MUDU_BASE_URL=http://localhost:8000/v1  MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct
 BASE_URL = os.environ.get("MUDU_BASE_URL", "http://localhost:11434/v1")
 MODEL    = os.environ.get("MUDU_MODEL",    "qwen2.5vl-16k")
 
