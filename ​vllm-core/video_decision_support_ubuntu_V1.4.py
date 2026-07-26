@@ -19,10 +19,17 @@ Lisans: Apache License 2.0
     4) python3 -m venv venv && source venv/bin/activate
        pip install ultralytics opencv-python requests numpy faster-whisper
 
-CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_V1.4.py
+CALISTIRMA:  source venv/bin/activate && python3 video_decision_support_ubuntu_V1.4.py /yol/video.mp4
+
+vLLM ile:
+    vllm serve Qwen/Qwen2.5-VL-7B-Instruct --host 0.0.0.0 --port 8000 \
+      --dtype bfloat16 --max-model-len 16384 --limit-mm-per-prompt image=8
+    MUDU_BASE_URL=http://localhost:8000/v1 MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct \
+      python3 video_decision_support_ubuntu_V1.4.py /yol/video.mp4
 """
 
 import os
+import sys
 import re
 import json
 import base64
@@ -41,8 +48,11 @@ except ImportError:
     print("UYARI: ultralytics yok -> YOLO atlanir. (pip install ultralytics)")
 
 # YAPILANDIRMA
-BASE_URL = "http://localhost:11434/v1"
-MODEL    = "qwen2.5vl-16k"
+# Servis adresi ve model, ortam degiskeninden okunur; verilmezse Ollama varsayilir.
+#   Ollama (varsayilan):  MUDU_BASE_URL=http://localhost:11434/v1  MUDU_MODEL=qwen2.5vl-16k
+#   vLLM:                 MUDU_BASE_URL=http://localhost:8000/v1   MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct
+BASE_URL = os.environ.get("MUDU_BASE_URL", "http://localhost:11434/v1")
+MODEL    = os.environ.get("MUDU_MODEL",    "qwen2.5vl-16k")
 
 YOLO_WEIGHTS   = "yolov8m.pt"
 MAX_VL_FRAMES  = 8
@@ -364,10 +374,13 @@ def call_vl(vl_frames, cues, seen_classes):
                             "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
     content.append({"type": "text", "text": build_prompt(vl_frames, cues, seen_classes)})
     payload = {"model": MODEL, "messages": [{"role": "user", "content": content}],
-               "max_tokens": 768, "temperature": 0.1, "options": {"num_ctx": NUM_CTX}}
+               "max_tokens": 768, "temperature": 0.1}
+    # num_ctx yalnizca Ollama'ya ozel bir alandir; vLLM'de gonderme (baglam serve'de --max-model-len).
+    if "11434" in BASE_URL:
+        payload["options"] = {"num_ctx": NUM_CTX}
     resp = requests.post(f"{BASE_URL}/chat/completions", json=payload, timeout=900)
     if resp.status_code != 200:
-        raise RuntimeError(f"Ollama {resp.status_code}: {resp.text[:400]}")
+        raise RuntimeError(f"Servis {resp.status_code}: {resp.text[:400]}")
     return resp.json()["choices"][0]["message"]["content"]
 
 
@@ -444,19 +457,24 @@ def analyze(video_path):
 
 
 if __name__ == "__main__":
-    import sys
+    # Video yolu: 1) komut satiri argumani  2) asagidaki liste  3) ayni klasordeki ornek.mp4
     if len(sys.argv) > 1:
-        video_path = sys.argv[1]
+        videos = [sys.argv[1]]
     else:
-        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
-        print(f"Not: video yolu verilmedi, varsayilan deneniyor: {video_path}")
-
-    print(f"\n=== Isleniyor (TAM 7B): {video_path} ===")
-    try:
-        result, raw = analyze(video_path)
-        print("\n--- Sartnameye uygun JSON ---")
-        print(json.dumps(result, ensure_ascii=False, indent=2) if result else raw)
-    except requests.exceptions.ConnectionError:
-        print("HATA: Ollama'ya baglanilamadi. (curl http://localhost:11434)")
-    except Exception as exc:
-        print(f"HATA: {exc}")
+        videos = [
+            "/mnt/c/Users/saphi/Downloads/Arrest001_x264.mp4",
+        ]
+        if not videos or not os.path.exists(videos[0]):
+            fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ornek.mp4")
+            print(f"Not: video yolu verilmedi, varsayilan deneniyor: {fallback}")
+            videos = [fallback]
+    for path in videos:
+        print(f"\n=== Isleniyor (TAM): {path} ===")
+        try:
+            result, raw = analyze(path)
+            print("\n--- Sartnameye uygun JSON ---")
+            print(json.dumps(result, ensure_ascii=False, indent=2) if result else raw)
+        except requests.exceptions.ConnectionError:
+            print(f"HATA: Model servisine baglanilamadi. (curl {BASE_URL.replace('/v1','')})")
+        except Exception as exc:
+            print(f"HATA: {exc}")
