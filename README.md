@@ -1,4 +1,4 @@
-<img width="506" height="101" alt="image" src="https://github.com/user-attachments/assets/7cc18ec5-51e7-4dfb-b5a3-921327751498" /><div align="center">
+<div align="center">
 
 # MUDU-VLLM
 
@@ -9,7 +9,7 @@ yapılandırılmış **Türkçe JSON** karar çıktısı üreten multimodal kara
 
 `TEKNOFEST 2026` · `Türkçe Doğal Dil İşleme` · `Senaryo 3 — Video Analiz ve Karar Destek`
 
-**Etiket:** `BilisimVadisi2026` — **Lisans:** [Apache 2.0](LICENSE) — **Sürüm:** V1.4
+**Etiket:** `BilisimVadisi2026` — **Lisans:** [Apache 2.0](LICENSE) — **Sürüm:** V1.5
 
 </div>
 
@@ -26,7 +26,6 @@ yapılandırılmış **Türkçe JSON** karar çıktısı üreten multimodal kara
 - [Algı ve Füzyon Detayları](#algı-ve-füzyon-detayları)
 - [Veri Seti](#veri-seti)
 - [Dokümanlar](#dokümanlar)
-- [Ekip ve görev dağılımı](#ekip-ve-görev-dağılımı)
 
 ---
 
@@ -102,7 +101,7 @@ Ayrıntılı, platforma özel kurulum için → **[CALISTIRMA.md](CALISTIRMA.md)
 **1) Mini sürüm — en kolay, Ollama gerekmez**
 ```bash
 pip install torch transformers opencv-python pillow numpy
-python3 vllm-core/video_decision_support_mini_ubuntu_V1.4.py video.mp4
+python3 vllm-core/video_decision_support_mini_ubuntu_V1.5.py video.mp4
 ```
 
 **2) Tam 7B — asıl doğruluk (Ollama gerekir)**
@@ -111,7 +110,7 @@ ollama pull qwen2.5vl:7b
 # Modelfile:  FROM qwen2.5vl:7b  /  PARAMETER num_ctx 16384
 ollama create qwen2.5vl-16k -f Modelfile
 pip install -r requirements.txt
-python3 vllm-core/video_decision_support_ubuntu_V1.4.py video.mp4
+python3 vllm-core/video_decision_support_ubuntu_V1.5.py video.mp4
 ```
 
 **3) Web arayüzü**
@@ -128,22 +127,6 @@ docker compose up -d              # api:8000 + web:7860
 
 ---
 
-## 5. Veri Seti
-
-Sistem testlerinde UCF-Crime veri setinden seçilen gözetim kamerası videoları kullanılmıştır.
-
-- **Kaynak:** UCF-Crime (Real-world Anomaly Detection in Surveillance Videos)
-- **İndirme bağlantısı:** https://www.crcv.ucf.edu/projects/real-world/
-- **Kullanım koşulu:** Akademik araştırma amaçlıdır. Veri seti sahipleri, kullanım
-  halinde aşağıdaki çalışmaya atıf yapılmasını talep etmektedir:
-
-  > Waqas Sultani, Chen Chen, Mubarak Shah, "Real-world Anomaly Detection in
-  > Surveillance Videos", IEEE Conference on Computer Vision and Pattern
-  > Recognition (CVPR), 2018.
-
-- **Kullanılan örnekler:** Arrest001_x264.mp4 (kavga/müdahale senaryosu)
-- **Not:** Video dosyaları depoya dahil edilmemiştir; yukarıdaki bağlantıdan indirilebilir.
-
 ## Dizin Yapısı
 
 ```
@@ -158,11 +141,14 @@ mudu-vllm/
 │
 ├── vllm-core/             · Tam karar destek betikleri (7B + mini · Win/Linux/Mac)
 │   ├── README.md          · vllm-core kullanma kılavuzu
-│   ├── video_decision_support_{ubuntu,windows,MAC}_V1.4.py        · 7B · Ollama
-│   └── video_decision_support_mini_{ubuntu,microsoft,MAC}_V1.4.py · 2B · Ollama'sız
+│   ├── video_decision_support_{ubuntu,windows,MAC}_V1.5.py        · 7B · Ollama
+│   └── video_decision_support_mini_{ubuntu,microsoft,MAC}_V1.5.py · 2B · Ollama'sız
 │
 ├── yolo/                  · YOLO + ByteTrack + anomali dedektörü
 │   └── yolo_pipeline.py   · CLI: python yolo_pipeline.py video.mp4 → *_yolo.json
+│
+├── audio/                 · Whisper ses analizi modülü
+│   └── audio_cues.py      · transcribe_audio_cues() · GPU otomatik · CLI
 │
 ├── api-service/           · FastAPI servisi
 │   ├── app.py             · /health · /v1/schema · /v1/analyze · /docs
@@ -202,7 +188,7 @@ Video sürükle-bırak, canlı **NDJSON** ilerleme akışı (`POST /api/analyze`
 
 ### Docker
 
-Tek imaj (`mudu-vllm:1.4`) hem API hem Web kodunu içerir. CPU torch ve yerel `yolov8n.pt` imaja gömülür.
+Tek imaj (`mudu-vllm:1.5`) hem API hem Web kodunu içerir. CPU torch ve yerel `yolov8n.pt` imaja gömülür.
 
 ```bash
 docker compose up -d        # api:8000 + web:7860
@@ -230,11 +216,29 @@ kodlanır, olasılıksal ölçüm sonrası ağırlıklı skor (`0.35 · 0.35 · 
 
 ## Veri Seti
 
-Sistemin test edilmesi ve doğrulanması için açık kaynaklı akademik ve operasyonel video veri setleri kullanılmıştır. Güvenlik senaryoları nedeniyle ham videolar depoda tutulmamakta, herkese açık kaynaklardan çekilmektedir.
+Test videoları **UCF-Crime** veri setinden alınmıştır (gerçek dünya gözetim videolarında anomali tespiti için standart akademik referans). Videolar boyutları nedeniyle depoya dahil **edilmez**, aşağıdaki resmi bağlantıdan indirilebilir.
 
-* *Ana Test Veri Seti:* UCF-Crime (Anomaly Detection in Video)
-* *Açık Erişim Bağlantısı:* [Kaggle UCF-Crime Dataset]([https://www.kaggle.com/datasets/odins0n/ucf-crime])https://www.kaggle.com/datasets/odins0n/ucf-crime-dataset
-* *Lisans:* Akademik / Araştırma Amaçlı Açık Lisans
+- **Veri seti:** UCF-Crime — *Real-world Anomaly Detection in Surveillance Videos* (Sultani, Chen, Shah — CVPR 2018)
+- **Resmi proje sayfası (indirme):** https://www.crcv.ucf.edu/projects/real-world/
+- **Doğrudan arşiv:** https://www.crcv.ucf.edu/data1/chenchen/UCF_Crimes.zip
+- **İçerik:** 1900 kesintisiz gözetim videosu, 13 anomali sınıfı (Arrest, Assault, Fighting, RoadAccidents, Robbery, Shooting, Vandalism vb.) + normal videolar
+- **Kullanım koşulu:** CRCV / University of Central Florida tarafından **akademik ve araştırma amaçlı** kamuya açık sunulur. Videolar açık kaynaklardan derlenmiştir; atıf zorunludur (yukarıdaki CVPR 2018 makalesi).
+
+> Projede bu setten seçilmiş bir alt küme (ör. `Arrest001_x264.mp4`) test amaçlı kullanılmıştır.
+
+---
+
+## Ekip
+
+**MUDU-VLLM** · Mudanya Üniversitesi
+
+| Üye | Rol | Sorumlu Modül |
+|-----|-----|----------------|
+| **Elif Kübra Sağlam** | Takım Kaptanı — prompt & risk mantığı, DecisionCore, LLM servisleme, dokümantasyon | `vllm-core/` |
+| Berke Baran Tozkoparan | Bilgisayarlı görü — nesne tespiti, ByteTrack takip, hareket & yakınsama anomalileri | `yolo/` |
+| Abdulhamit Hazine | Sistem mimarisi & gömülü sistemler — FastAPI servis katmanı, Docker | `api-service/` |
+| Mehmet Emre Macırmemet | Uygulama & servis katmanı — arayüz, ses analizi modülü | `web-ui/`, `audio/` |
+| Dr. Nergis Erdem | Akademik danışman | — |
 
 ---
 
@@ -245,18 +249,9 @@ Sistemin test edilmesi ve doğrulanması için açık kaynaklı akademik ve oper
 | [CALISTIRMA.md](CALISTIRMA.md) | Platforma özel adım adım kurulum ve çalıştırma |
 | [ozet.md](ozet.md) | Detaylı proje özeti ve teknik notlar |
 | [vllm-core/README.md](vllm-core/README.md) | vllm-core betikleri kullanma kılavuzu |
+| [audio/audio_cues.py](audio/audio_cues.py) | Whisper ses analizi modülü |
 
 ---
-
-## Ekip ve Görev Dağılımı
-**Takım Adı:** MUDU-VLLM
- 
-| Üye Adı Soyadı | Projedeki Rolü / Görev Tanımı |
-| :--- | :--- |
-| **Elif Kübra Sağlam** | **Takım Kaptanı** · Veri Bilimi ve Entegrasyon. Projenin analitik mimarisini ve ReAct Agent döngüsünü yönetiyor. |
-| **Abdulhamit Hazine** | **Sistem Mimarisi & Gömülü Sistemler** · FastAPI ve Docker altyapısı ile modelin yerel servis katmanını (vLLM) kuruyor. |
-| **Berke Baran Tozkoparan** | **Bilgisayarlı Görü (CV)** · YOLO / RT-DETR modelleri ile nesne tespiti, takip ve füzyon süreçlerinden sorumlu. |
-| **Mehmet Emre Macırmemet** | **Arayüz Geliştirici (UI)** · Web UI (tek sayfa kullanıcı arayüzü), zaman çizelgesi (timeline) ve arayüz prototiplerinden sorumlu. |
 
 <div align="center">
 
