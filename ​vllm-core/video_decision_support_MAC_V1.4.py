@@ -1,5 +1,5 @@
 """
-MUDU-VLLM — Senaryo 3: Uctan uca video karar destek pipeline'i (7B) V1.4 — macOS
+MUDU-VLLM — Senaryo 3: Uctan uca video karar destek pipeline'i (7B) V1.5 — macOS
 ================================================================================
 Katmanlar:
     [HAREKET]  YOLO + ByteTrack -> nesne takibi + sinif etiketleri + hareket anomalileri
@@ -24,7 +24,9 @@ KURULUM (macOS):
 
 CALISTIRMA (video yolunu komut satirindan ver):
     source venv/bin/activate
-    python3 video_decision_support_V1_4_mac.py /Users/ad/Downloads/video.mp4
+    python3 video_decision_support_MAC_V1.5.py /Users/ad/Downloads/video.mp4
+
+vLLM ile (final/GPU): MUDU_BASE_URL ve MUDU_MODEL env degiskenlerini ver.
 --------------------------------------------------------------------------------
 Lisans: Apache License 2.0
 """
@@ -50,8 +52,10 @@ except ImportError:
     print("UYARI: ultralytics yok -> YOLO atlanir. (pip install ultralytics)")
 
 # YAPILANDIRMA
-BASE_URL = "http://localhost:11434/v1"
-MODEL    = "qwen2.5vl-16k"
+# Servis adresi ve model ortam degiskeninden okunur; verilmezse Ollama varsayilir.
+#   vLLM: MUDU_BASE_URL=http://localhost:8000/v1  MUDU_MODEL=Qwen/Qwen2.5-VL-7B-Instruct
+BASE_URL = os.environ.get("MUDU_BASE_URL", "http://localhost:11434/v1")
+MODEL    = os.environ.get("MUDU_MODEL",    "qwen2.5vl-16k")
 
 YOLO_WEIGHTS   = "yolov8m.pt"
 MAX_VL_FRAMES  = 8
@@ -370,10 +374,13 @@ def call_vl(vl_frames, cues, seen_classes):
                             "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
     content.append({"type": "text", "text": build_prompt(vl_frames, cues, seen_classes)})
     payload = {"model": MODEL, "messages": [{"role": "user", "content": content}],
-               "max_tokens": 768, "temperature": 0.1, "options": {"num_ctx": NUM_CTX}}
+               "max_tokens": 768, "temperature": 0.1}
+    # num_ctx yalnizca Ollama'ya ozel; vLLM'de gonderme (baglam serve'de --max-model-len).
+    if "11434" in BASE_URL:
+        payload["options"] = {"num_ctx": NUM_CTX}
     resp = requests.post(f"{BASE_URL}/chat/completions", json=payload, timeout=900)
     if resp.status_code != 200:
-        raise RuntimeError(f"Ollama {resp.status_code}: {resp.text[:400]}")
+        raise RuntimeError(f"Servis {resp.status_code}: {resp.text[:400]}")
     return resp.json()["choices"][0]["message"]["content"]
 
 
@@ -459,6 +466,6 @@ if __name__ == "__main__":
         print("\n--- Sartnameye uygun JSON ---")
         print(json.dumps(result, ensure_ascii=False, indent=2) if result else raw)
     except requests.exceptions.ConnectionError:
-        print("HATA: Ollama'ya baglanilamadi. Ollama Mac uygulamasi acik mi? (ollama serve)")
+        print(f"HATA: Model servisine baglanilamadi. (curl {BASE_URL.replace('/v1','')})")
     except Exception as exc:
         print(f"HATA: {exc}")
