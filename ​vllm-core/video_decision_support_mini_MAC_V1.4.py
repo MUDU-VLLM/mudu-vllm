@@ -1,5 +1,5 @@
 """
-MUDU-VLLM — Senaryo 3: Video Karar Destek (MINI / 2B) V1.4 — TASINABILIR
+MUDU-VLLM — Senaryo 3: Video Karar Destek (MINI / 2B) V1.5 — TASINABILIR
 ========================================================================
 Qwen2-VL-2B (transformers) + opsiyonel YOLO ipucu + Kuantum-esintili risk.
 
@@ -14,8 +14,8 @@ KURULUM:
     pip install torch transformers opencv-python pillow numpy
 
 CALISTIRMA (video yolunu komut satirindan ver):
-    # macOS:   python3 video_decision_support_mini_V1_4.py /Users/ad/Downloads/video.mp4
-    # Windows: python video_decision_support_mini_V1_4.py "C:\\Users\\Ad\\Downloads\\video.mp4"
+    # macOS:   python3 video_decision_support_mini_MAC_V1.5.py /Users/ad/Downloads/video.mp4
+    # Windows: python video_decision_support_mini_MAC_V1.5.py "C:\\Users\\Ad\\Downloads\\video.mp4"
 ------------------------------------------------------------------------
 Lisans: Apache License 2.0
 """
