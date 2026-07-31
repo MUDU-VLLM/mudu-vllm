@@ -1,7 +1,7 @@
 """
-MUDU-VLLM — Senaryo 3: Video Karar Destek (MINI / 2B) V1.4 — TASINABILIR
+MUDU-VLLM — Senaryo 3: Video Karar Destek (MINI / 2B) V1.5 — TASINABILIR
 ========================================================================
-Qwen2-VL-2B (transformers, CPU) + opsiyonel YOLO ipucu + Kuantum-esintili risk.
+Qwen2-VL-2B (transformers) + opsiyonel YOLO ipucu + Kuantum-esintili risk.
 
 ** Bu MINI surumdur: Ollama GEREKMEZ, dusuk kuruluma sahiptir.       **
 ** Windows / Linux / macOS hepsinde calisir. Juri cikti ASIL 7B'den. **
@@ -14,8 +14,8 @@ KURULUM (her platform):
     pip install torch transformers opencv-python pillow numpy
 
 CALISTIRMA (video yolunu komut satirindan ver):
-    python video_decision_support_mini_V1_4.py "C:\\Users\\Ad\\Downloads\\video.mp4"
-    python video_decision_support_mini_V1_4.py /home/kullanici/video.mp4
+    python video_decision_support_mini_microsoft_V1.5.py "C:\\Users\\Ad\\Downloads\\video.mp4"
+    python video_decision_support_mini_microsoft_V1.5.py /home/kullanici/video.mp4
     # Yol vermezsen ayni klasordeki 'ornek.mp4' aranir.
 ------------------------------------------------------------------------
 Lisans: Apache License 2.0
@@ -35,12 +35,21 @@ MODEL_NAME = "Qwen/Qwen2-VL-2B-Instruct"
 MAX_FRAMES = 8
 MAX_NEW_TOKENS = 512
 
-print("Hafifletilmis model ve islemci yukleniyor (lokal CPU modu)...")
+def pick_device():
+    """NVIDIA GPU varsa CUDA (float16), yoksa CPU (float32)."""
+    if torch.cuda.is_available():
+        return "cuda", torch.float16
+    return "cpu", torch.float32
+
+
+DEVICE, DTYPE = pick_device()
+print(f"Cihaz secildi: {DEVICE.upper()}  (dtype={DTYPE})")
+
+print("Model ve islemci yukleniyor...")
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_NAME,
-    torch_dtype=torch.float32,
-    device_map="cpu",
-)
+    torch_dtype=DTYPE,
+).to(DEVICE)
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 
 
@@ -198,8 +207,8 @@ def analyze(video_path, max_frames=MAX_FRAMES, yolo_events=None, seen_classes=No
         "content": [*[{"type": "image"} for _ in frames], {"type": "text", "text": prompt}],
     }]
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = processor(text=[text], images=frames, padding=True, return_tensors="pt").to("cpu")
-    print("Mini (2B) model ile analiz uretiliyor...")
+    inputs = processor(text=[text], images=frames, padding=True, return_tensors="pt").to(DEVICE)
+    print(f"Mini (2B) model ile analiz uretiliyor ({DEVICE.upper()})...")
     with torch.no_grad():
         gen = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS)
     trimmed = [o[len(i):] for i, o in zip(inputs.input_ids, gen)]
