@@ -117,7 +117,7 @@ class YoloPipeline:
     anomali dedektorune bildirir.
     """
 
-    def __init__(self, model_size: str = "yolov8n.pt"):
+    def __init__(self, model_size: str = "yolov8m.pt"):
         if not YOLO_OK:
             raise ImportError("ultralytics yuklu degil — pip install ultralytics")
         print(f"YOLO modeli yukleniyor: {model_size}")
@@ -134,11 +134,12 @@ class YoloPipeline:
         self.detector = AnomalyDetector(fps=fps)
 
         print("YOLO + ByteTrack analizi basladi...")
+        tracker_cfg = str(Path(__file__).parent / "bytetrack_custom.yaml")
         results = self.model.track(
             source=video_path,
             stream=True,
             conf=conf,
-            tracker="bytetrack.yaml",
+            tracker=tracker_cfg,
             persist=True,
             verbose=False
         )
