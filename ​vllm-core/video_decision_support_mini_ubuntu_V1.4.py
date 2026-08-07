@@ -1,4 +1,4 @@
-"""
+""" 
 MUDU-VLLM — Senaryo 3: Video Tabanli Karar Destek Sistemi (MINI / 2B)
 
 Qwen2-VL-2B (transformers) ile Turkce analiz. GPU varsa otomatik CUDA kullanir.
